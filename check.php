@@ -9,8 +9,8 @@ if (!$key) {
     exit();
 }
 
-// Fixed: Changed hostname from infinityfree.com to byetcluster.com
-$db_host = 'sql113.byetcluster.com';
+// Original InfinityFree database host
+$db_host = 'sql113.infinityfree.com';
 $db_name = 'if0_41285365_vlive_license';
 $db_user = 'if0_41285365';
 $db_pass = 'bMhlraME9WjBw';
@@ -19,7 +19,7 @@ try {
     $pdo = new PDO("mysql:host=$db_host;dbname=$db_name;charset=utf8", $db_user, $db_pass);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 } catch (PDOException $e) {
-    echo json_encode(['error' => 'Database connection failed: ' . $e->getMessage()]);
+    echo json_encode(['error' => 'Database connection failed']);
     exit();
 }
 
