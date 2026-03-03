@@ -9,17 +9,20 @@ if (!$key) {
     exit();
 }
 
-// Original InfinityFree database host
-$db_host = 'sql113.infinityfree.com';
-$db_name = 'if0_41285365_vlive_license';
-$db_user = 'if0_41285365';
-$db_pass = 'bMhlraME9WjBw';
+// =============================================
+// Render PostgreSQL Database Connection
+// =============================================
+$db_host = 'dpg-d6ja3t7tskes738hmt40-a';
+$db_name = 'licenses_nd5s';
+$db_user = 'licenses_nd5s_user';
+$db_pass = 'zqhUfY3NJXYJWGzZSpdKpXvnKkhoHxtH';
+$db_port = '5432';
 
 try {
-    $pdo = new PDO("mysql:host=$db_host;dbname=$db_name;charset=utf8", $db_user, $db_pass);
+    $pdo = new PDO("pgsql:host=$db_host;port=$db_port;dbname=$db_name;", $db_user, $db_pass);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 } catch (PDOException $e) {
-    echo json_encode(['error' => 'Database connection failed']);
+    echo json_encode(['error' => 'Database connection failed: ' . $e->getMessage()]);
     exit();
 }
 
