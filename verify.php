@@ -30,10 +30,11 @@ try {
     $pdo = new PDO("mysql:host=$db_host;dbname=$db_name;charset=utf8", $db_user, $db_pass);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 } catch (PDOException $e) {
-    echo json_encode(['error' => 'DB connection failed']);
+    echo json_encode(['error' => 'Database connection failed']);
     exit();
 }
 
+// Check if key exists
 $stmt = $pdo->prepare("SELECT * FROM licenses WHERE license_key = ?");
 $stmt->execute([$key]);
 $license = $stmt->fetch();
@@ -43,28 +44,50 @@ if (!$license) {
     exit();
 }
 
+// Check if expired
 if (strtotime($license['expires_at']) < time()) {
-    echo json_encode(['error' => 'Key expired']);
+    echo json_encode(['error' => 'Key expired on: ' . $license['expires_at']]);
     exit();
 }
 
-if ($license['device_id'] && $license['device_id'] !== $android_id) {
-    echo json_encode(['error' => 'Key already used on another device']);
-    exit();
-}
-
+// If device_id is NULL, this is first activation
 if (!$license['device_id']) {
+    // Save device info with timestamp
     $update = $pdo->prepare("UPDATE licenses SET device_id = ?, device_model = ?, activated_at = NOW() WHERE id = ?");
     $update->execute([$android_id, $device_model, $license['id']]);
+    
+    $message = "First activation successful for device: " . substr($android_id, 0, 8) . "...";
+} 
+// If device_id matches, this is same device
+else if ($license['device_id'] === $android_id) {
+    $message = "Device already activated on: " . $license['activated_at'];
+} 
+// If device_id different, this is another device
+else {
+    echo json_encode(['error' => 'This key was already used on another device on: ' . $license['activated_at']]);
+    exit();
 }
 
+// Calculate remaining time
 $remaining_ms = (strtotime($license['expires_at']) - time()) * 1000;
 $secret = "MySup3rS3cr3tK3yF0rL1c3ns3App2024";
 $signature = hash_hmac('sha256', "true:" . $remaining_ms, $secret);
 
+// Get updated license info
+$stmt = $pdo->prepare("SELECT * FROM licenses WHERE license_key = ?");
+$stmt->execute([$key]);
+$license = $stmt->fetch();
+
+// Success response with details
 echo json_encode([
     'valid' => true,
     'remaining_ms' => $remaining_ms,
-    'sig' => $signature
+    'sig' => $signature,
+    'debug' => [
+        'activated_at' => $license['activated_at'],
+        'device_id' => substr($license['device_id'], 0, 8) . '...',
+        'device_model' => $license['device_model'],
+        'message' => $message
+    ]
 ]);
 ?>
