@@ -21,7 +21,8 @@ $key = $data['key'];
 $android_id = $data['android_id'];
 $device_model = $data['device_model'];
 
-$db_host = 'sql113.infinityfree.com';
+// Fixed: Changed hostname from infinityfree.com to byetcluster.com
+$db_host = 'sql113.byetcluster.com';
 $db_name = 'if0_41285365_vlive_license';
 $db_user = 'if0_41285365';
 $db_pass = 'bMhlraME9WjBw';
@@ -34,48 +35,37 @@ try {
     exit();
 }
 
-// Check if key exists
 $stmt = $pdo->prepare("SELECT * FROM licenses WHERE license_key = ?");
 $stmt->execute([$key]);
 $license = $stmt->fetch();
 
 if (!$license) {
-    echo json_encode(['error' => 'Invalid key - not found in database']);
+    echo json_encode(['error' => 'Invalid key']);
     exit();
 }
 
-// Check if expired
-$expires = strtotime($license['expires_at']);
-if (time() > $expires) {
-    echo json_encode(['error' => 'Key expired on: ' . $license['expires_at']]);
+if (strtotime($license['expires_at']) < time()) {
+    echo json_encode(['error' => 'Key expired']);
     exit();
 }
 
-// If device_id is NULL, this is first activation
-if (!$license['device_id']) {
-    $update = $pdo->prepare("UPDATE licenses SET device_id = ?, device_model = ?, activated_at = NOW() WHERE id = ?");
-    $update->execute([$android_id, $device_model, $license['id']]);
-    
-    $message = "First activation successful";
-} 
-// If device_id matches, this is same device
-else if ($license['device_id'] === $android_id) {
-    $message = "Device already activated";
-} 
-// If device_id different, this is another device
-else {
+if ($license['device_id'] && $license['device_id'] !== $android_id) {
     echo json_encode(['error' => 'Key already used on another device']);
     exit();
 }
 
-$remaining_ms = ($expires - time()) * 1000;
+if (!$license['device_id']) {
+    $update = $pdo->prepare("UPDATE licenses SET device_id = ?, device_model = ?, activated_at = NOW() WHERE id = ?");
+    $update->execute([$android_id, $device_model, $license['id']]);
+}
+
+$remaining_ms = (strtotime($license['expires_at']) - time()) * 1000;
 $secret = "MySup3rS3cr3tK3yF0rL1c3ns3App2024";
 $signature = hash_hmac('sha256', "true:" . $remaining_ms, $secret);
 
 echo json_encode([
     'valid' => true,
     'remaining_ms' => $remaining_ms,
-    'sig' => $signature,
-    'message' => $message
+    'sig' => $signature
 ]);
 ?>
