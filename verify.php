@@ -38,7 +38,45 @@ try {
     exit();
 }
 
-// Check if key exists
+// =============================================
+// Create table if it doesn't exist
+// =============================================
+$createTableSQL = "
+CREATE TABLE IF NOT EXISTS licenses (
+    id SERIAL PRIMARY KEY,
+    license_key VARCHAR(64) UNIQUE NOT NULL,
+    device_id VARCHAR(64),
+    device_model VARCHAR(100),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    activated_at TIMESTAMP,
+    expires_at TIMESTAMP NOT NULL,
+    duration_days INT NOT NULL
+);
+";
+
+try {
+    $pdo->exec($createTableSQL);
+    error_log("Table 'licenses' is ready");
+} catch (PDOException $e) {
+    error_log("Table creation notice: " . $e->getMessage());
+}
+
+// =============================================
+// Insert test key '1234' if it doesn't exist
+// =============================================
+$checkKey = $pdo->prepare("SELECT * FROM licenses WHERE license_key = '1234'");
+$checkKey->execute();
+$keyExists = $checkKey->fetch();
+
+if (!$keyExists) {
+    $insertKey = $pdo->prepare("INSERT INTO licenses (license_key, expires_at, duration_days) VALUES ('1234', NOW() + INTERVAL '30 days', 30)");
+    $insertKey->execute();
+    error_log("Test key '1234' has been inserted");
+}
+
+// =============================================
+// Check if the requested key exists
+// =============================================
 $stmt = $pdo->prepare("SELECT * FROM licenses WHERE license_key = ?");
 $stmt->execute([$key]);
 $license = $stmt->fetch();
