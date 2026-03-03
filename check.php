@@ -27,16 +27,17 @@ $stmt->execute([$key]);
 $license = $stmt->fetch();
 
 if (!$license) {
-    echo json_encode(['valid' => false, 'debug' => 'Key not found in database']);
+    echo json_encode(['valid' => false, 'message' => 'Key not found']);
     exit();
 }
 
-if (strtotime($license['expires_at']) < time()) {
-    echo json_encode(['valid' => false, 'debug' => 'Key expired on: ' . $license['expires_at']]);
+$expires = strtotime($license['expires_at']);
+if (time() > $expires) {
+    echo json_encode(['valid' => false, 'message' => 'Key expired']);
     exit();
 }
 
-$remaining_ms = (strtotime($license['expires_at']) - time()) * 1000;
+$remaining_ms = ($expires - time()) * 1000;
 $secret = "MySup3rS3cr3tK3yF0rL1c3ns3App2024";
 $signature = hash_hmac('sha256', "true:" . $remaining_ms, $secret);
 
@@ -44,10 +45,6 @@ echo json_encode([
     'valid' => true,
     'remaining_ms' => $remaining_ms,
     'sig' => $signature,
-    'debug' => [
-        'activated_at' => $license['activated_at'] ?? 'Not activated yet',
-        'device_id' => $license['device_id'] ? substr($license['device_id'], 0, 8) . '...' : 'No device',
-        'device_model' => $license['device_model'] ?? 'Unknown'
-    ]
+    'message' => 'Key is valid'
 ]);
 ?>
